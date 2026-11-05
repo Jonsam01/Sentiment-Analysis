@@ -1,0 +1,155 @@
+{
+  "name": "Escalate unacknowledged alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "={{ $json.escalate_to }}",
+        "subject": "={{ 'REMINDER: feedback not handled yet - ' + $json.rating + '/5' }}",
+        "message": "={{ (() => {   const e = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\\n/g, '<br>');   const hours = Math.max(1, Math.round((Date.now() - new Date($json.alert_sent_at).getTime()) / 3600000));   const ackUrl = 'https://YOUR-FORM-DOMAIN/ack?id=' + encodeURIComponent($json.id);   const safety = $json.safety_flag     ? '<div style=\"background:#fdecea;border-left:4px solid #d93025;padding:12px 14px;margin:0 0 16px;font-weight:bold;color:#a50e0e;\">SAFETY CONCERN: please call the customer directly. Do not give medical advice.</div>'     : '';   return `<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#202124;line-height:1.5;max-width:600px;\"> <h2 style=\"margin:0 0 12px;font-size:18px;\">Reminder: this feedback has not been handled</h2> <p style=\"margin:0 0 16px;\">An alert was sent about <b>${hours} hour${hours === 1 ? '' : 's'}</b> ago and nobody has marked it as handled.</p> ${safety} <p style=\"margin:0 0 16px;\"><b>Rating:</b> ${e($json.rating)}/5 &nbsp;|&nbsp; <b>Stylist:</b> ${e($json.stylist || 'not given')}</p> <p style=\"margin:0 0 4px;\"><b>Customer message</b></p> <div style=\"background:#f1f3f4;padding:12px 14px;border-radius:6px;margin:0 0 16px;\">${e($json.comment)}</div> <p style=\"margin:0 0 4px;\"><b>Customer contact</b></p> <p style=\"margin:0 0 20px;\">Name: ${e($json.customer_name || 'not given')}<br>Phone: ${e($json.customer_phone || 'not given')}</p> <p style=\"margin:0 0 20px;\"><a href=\"${ackUrl}\" style=\"display:inline-block;background:#1a73e8;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:6px;font-weight:bold;\">I'm handling this</a></p> <p style=\"margin:0;color:#80868b;font-size:12px;\">Reference: ${e($json.submission_id)}</p> </div>`; })() }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Feedback Alerts"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        -32
+      ],
+      "id": "d5021c26-8d0a-4671-8400-39d7bae26157",
+      "name": "Send reminder email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "feedback",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Get overdue alerts2').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "escalated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        384,
+        -32
+      ],
+      "id": "337f172f-a795-4be8-aecc-d7f50a3f67ea",
+      "name": "Mark escalated",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "overdue_alerts",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        32,
+        -32
+      ],
+      "id": "8a3ad0fe-b413-4b84-bb2b-ecc8b0feb109",
+      "name": "Get overdue alerts2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 59
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -160,
+        -32
+      ],
+      "id": "02535095-9162-4287-b1a5-fb02cd3c0a65",
+      "name": "Every hour"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Send reminder email": {
+      "main": [
+        [
+          {
+            "node": "Mark escalated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get overdue alerts2": {
+      "main": [
+        [
+          {
+            "node": "Send reminder email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Get overdue alerts2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "tags": []
+}

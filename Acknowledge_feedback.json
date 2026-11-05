@@ -1,0 +1,124 @@
+{
+  "name": "Acknowledge feedback",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ack-YOUR_SECRET_PATH",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://YOUR-FORM-DOMAIN"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        -48
+      ],
+      "id": "a6c40f64-d8fa-4c62-a66c-0e73e35e0a00",
+      "name": "Acknowledge feedback"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "feedback",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.body.id }}"
+            },
+            {
+              "keyName": "case_status",
+              "condition": "eq",
+              "keyValue": "alerted"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "case_status",
+              "fieldValue": "acknowledged"
+            },
+            {
+              "fieldId": "acknowledged_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -48
+      ],
+      "id": "a800d99d-49a9-4625-8b29-cc79c5eb5438",
+      "name": "Acknowledge case",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.error ? { \"ok\": false, \"error\": \"Invalid request.\" } : { \"ok\": true, \"acknowledged\": !!$json.id } }}",
+        "options": {
+          "responseCode": "={{ $json.error ? 400 : 200 }}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        80,
+        -48
+      ],
+      "id": "52a11b6a-aa5b-4287-b9b4-884d842523dd",
+      "name": "Respond (ack result)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Acknowledge feedback": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledge case": {
+      "main": [
+        [
+          {
+            "node": "Respond (ack result)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "tags": []
+}

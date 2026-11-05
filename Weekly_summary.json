@@ -1,0 +1,109 @@
+{
+  "name": "Weekly summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -224,
+        -16
+      ],
+      "id": "0e024126-5d27-4c45-b028-dca012871fc3",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "weekly_summary",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -16
+      ],
+      "id": "81d40cd6-fb99-4fd5-8510-a901ac13266b",
+      "name": "Get weekly summary",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.alert_email }}",
+        "subject": "={{ 'Weekly sentiment summary - ' + $json.business_name }}",
+        "message": "={{ (() => {   const s = $json;   const e = (x) => String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');   const total = Number(s.total) || 0;   const pct = (n) => total ? Math.round(100 * Number(n) / total) + '%' : '0%';   const mins = s.avg_minutes_to_acknowledge;   const speed = mins == null ? 'no cases handled yet' : (mins < 60 ? mins + ' min' : (Math.round(mins / 6) / 10) + ' hours');   const row = (label, value, note) => `<tr><td style=\"padding:8px 12px;border-bottom:1px solid #eee;\">${label}</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;\">${value}</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#5f6368;\">${note || ''}</td></tr>`;   const warn = Number(s.still_unhandled) > 0     ? `<div style=\"background:#fff8e1;border-left:4px solid #f9ab00;padding:12px 14px;margin:0 0 16px;color:#5f4300;\"><b>${e(s.still_unhandled)}</b> alert(s) have not been marked as handled yet.</div>`     : '';   return `<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#202124;line-height:1.5;max-width:600px;\"> <h2 style=\"margin:0 0 4px;font-size:18px;\">Weekly sentiment summary</h2> <p style=\"margin:0 0 16px;color:#5f6368;\">${e(s.business_name)} - the last 7 days</p> ${warn} <table style=\"width:100%;border-collapse:collapse;margin:0 0 16px;\"> ${row('Messages received', e(total), 'Average rating ' + e(s.avg_rating ?? '-') + ' / 5')} ${row('Positive', e(s.positive), pct(s.positive))} ${row('Neutral', e(s.neutral), pct(s.neutral))} ${row('Negative', e(s.negative), pct(s.negative))} ${row('Health or safety concerns', e(s.safety_cases), '')} ${row('Questions or suggestions', e(s.reply_requests), 'need a reply from you')} ${row('Alerts sent to you', e(s.alerts_sent), '')} ${row('Marked as handled', e(s.acknowledged), 'Average time to respond: ' + e(speed))} ${row('Reminders sent', e(s.reminders_sent), 'alerts left unhandled too long')} ${row('Could not be read automatically', e(s.unclassified), 'you were emailed these to read yourself')} ${row('Marked for a second look', e(s.flagged_for_review), 'the system was less sure')} </table> <p style=\"margin:0;color:#80868b;font-size:12px;\">Sent automatically every Monday morning. Reply to this email if anything looks wrong.</p> </div>`; })() }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Feedback Alerts"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        -16
+      ],
+      "id": "b3865c48-9f2b-49a8-8e3f-daa20614c3ae",
+      "name": "Send weekly summary",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get weekly summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get weekly summary": {
+      "main": [
+        [
+          {
+            "node": "Send weekly summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "tags": []
+}
